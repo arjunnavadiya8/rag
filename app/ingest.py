@@ -1,19 +1,25 @@
 import os
-from langchain_community.document_loaders import TextLoader
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from app.config import settings
 
-def ingest_data(file_path: str):
+def ingest_directory(directory_path: str):
     """
-    Load data from a text file, chunk it, embed it, and save the FAISS index.
+    Load all pdf documents from a directory, chunk them, embed them, and save the FAISS index.
     """
-    print(f"Loading document: {file_path}")
-    loader = TextLoader(file_path)
+    print(f"Loading documents from directory: {directory_path}")
+    
+    # We use PyPDFLoader for all .pdf files in the directory
+    loader = DirectoryLoader(directory_path, glob="**/*.pdf", loader_cls=PyPDFLoader)
     documents = loader.load()
+    
+    if not documents:
+        print(f"No documents found in {directory_path}. Please add some .pdf files.")
+        return
 
-    print("Splitting text into chunks...")
+    print(f"Loaded {len(documents)} document(s). Splitting text into chunks...")
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200
@@ -35,12 +41,11 @@ def ingest_data(file_path: str):
     print("Ingestion complete.")
 
 if __name__ == "__main__":
-    # Example usage: create a dummy file and ingest it
-    dummy_file = "sample.txt"
-    if not os.path.exists(dummy_file):
-        with open(dummy_file, "w") as f:
-            f.write("LangChain is a framework for developing applications powered by language models.\n")
-            f.write("FAISS is a library for efficient similarity search and clustering of dense vectors.\n")
-            f.write("FastAPI is a modern, fast web framework for building APIs with Python.\n")
+    data_dir = "data"
     
-    ingest_data(dummy_file)
+    # Ensure the data directory exists
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+        print(f"Created directory '{data_dir}'. Please add your .pdf files there.")
+        
+    ingest_directory(data_dir)

@@ -1,14 +1,14 @@
 version: '3.8'
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: rag-redis
+  mongodb:
+    image: mongo:latest
+    container_name: rag-mongodb
     ports:
-      - "6379:6379"
+      - "27017:27017"
     volumes:
-      - redis_data:/data
+      - mongodb_data:/data/db
     restart: always
 
 volumes:
-  redis_data:
+  mongodb_data:

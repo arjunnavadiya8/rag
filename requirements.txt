@@ -3,9 +3,10 @@ uvicorn
 langchain
 langchain-openai
 langchain-community
-langchain-redis
+langchain-mongodb
 pydantic-settings
 faiss-cpu
-redis
+pymongo
 python-dotenv
 tiktoken
+pypdf

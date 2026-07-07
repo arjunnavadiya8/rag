@@ -5,11 +5,17 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_community.chat_message_histories import RedisChatMessageHistory
+from langchain_mongodb.chat_message_histories import MongoDBChatMessageHistory
 from app.config import settings
+from operator import itemgetter
 
-def get_redis_history(session_id: str) -> RedisChatMessageHistory:
-    return RedisChatMessageHistory(session_id, url=settings.redis_url)
+def get_mongodb_history(session_id: str) -> MongoDBChatMessageHistory:
+    return MongoDBChatMessageHistory(
+        session_id=session_id,
+        connection_string=settings.mongodb_uri,
+        database_name="rag_db",
+        collection_name="chat_histories"
+    )
 
 def get_rag_chain():
     # 1. Setup LLM and Embeddings
@@ -31,9 +37,12 @@ def get_rag_chain():
 
     # 3. Setup Prompt Template
     qa_system_prompt = """You are an assistant for question-answering tasks. 
-    Use the following pieces of retrieved context to answer the question. 
-    If you don't know the answer, just say that you don't know. 
-    Use three sentences maximum and keep the answer concise.
+    You must ONLY use the provided context to answer the question. 
+    If the answer cannot be found in the context, you must say "I can only answer questions based on the provided document." Do not use your outside knowledge to answer the question itself.
+    
+    However, if the user asks about an acronym or abbreviation (like "SVM"), you MAY use your general knowledge to infer what it stands for (e.g., "Support Vector Machine") in order to find the relevant information in the context.
+    
+    When answering, preserve any formatting, examples, bullet points, and code blocks found in the context. Output your response using proper Markdown.
     
     Context: {context}"""
     
@@ -46,9 +55,14 @@ def get_rag_chain():
     def format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
 
+
     # 4. Build the Chain using LCEL
     rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough(), "chat_history": RunnablePassthrough()}
+        {
+            "context": itemgetter("question") | retriever | format_docs, 
+            "question": itemgetter("question"), 
+            "chat_history": itemgetter("chat_history")
+        }
         | qa_prompt
         | llm
         | StrOutputParser()
@@ -57,7 +71,7 @@ def get_rag_chain():
     # 5. Wrap with Message History
     chain_with_history = RunnableWithMessageHistory(
         rag_chain,
-        get_redis_history,
+        get_mongodb_history,
         input_messages_key="question",
         history_messages_key="chat_history",
     )
