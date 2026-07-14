@@ -398,3 +398,164 @@ body {
   background-color: transparent;
   padding: 0;
 }
+
+/* ─── Upload Toggle Button ─────────────────────────── */
+.upload-toggle-btn {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-color);
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.82rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.upload-toggle-btn:hover,
+.upload-toggle-btn.active {
+  background-color: rgba(16, 163, 127, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ─── Upload Panel ─────────────────────────────────── */
+.upload-panel {
+  border-bottom: 1px solid var(--border-color);
+  padding: 1.25rem 1.5rem;
+  background-color: var(--bg-main);
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Drop Zone ────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--bg-secondary);
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.drop-zone:hover,
+.drop-zone.dragging {
+  border-color: var(--accent);
+  background-color: rgba(16, 163, 127, 0.06);
+}
+
+.drop-zone-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1;
+}
+
+.drop-zone-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.drop-zone-sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ─── Upload Status ────────────────────────────────── */
+.upload-status {
+  max-width: 48rem;
+  margin: 0.75rem auto 0;
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.upload-status.uploading {
+  background-color: rgba(255, 200, 50, 0.1);
+  color: #ffc832;
+  border: 1px solid rgba(255, 200, 50, 0.2);
+}
+
+.upload-status.success {
+  background-color: rgba(16, 163, 127, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(16, 163, 127, 0.2);
+}
+
+.upload-status.error {
+  background-color: rgba(255, 85, 85, 0.1);
+  color: #ff5555;
+  border: 1px solid rgba(255, 85, 85, 0.2);
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 200, 50, 0.3);
+  border-top-color: #ffc832;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Document List ────────────────────────────────── */
+.doc-list {
+  max-width: 48rem;
+  margin: 1rem auto 0;
+  background-color: var(--bg-secondary);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.doc-list-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.doc-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.doc-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.doc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

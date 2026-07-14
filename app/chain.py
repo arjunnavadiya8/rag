@@ -4,7 +4,6 @@ from langchain_community.vectorstores import FAISS
 from langchain_mongodb.chat_message_histories import MongoDBChatMessageHistory
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
-from langchain_community.tools.tavily_search import TavilySearchResults
 from app.config import settings
 
 def get_mongodb_history(session_id: str) -> MongoDBChatMessageHistory:
@@ -15,36 +14,41 @@ def get_mongodb_history(session_id: str) -> MongoDBChatMessageHistory:
         collection_name="chat_histories"
     )
 
-def get_rag_agent():
-    # 1. Setup LLM and Embeddings
-    llm = ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key, streaming=True)
+def _build_retriever():
+    """Build a fresh retriever from the FAISS index on disk."""
     embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key)
-
-    # 2. Setup Retriever
     if os.path.exists(settings.faiss_index_path) and os.path.isdir(settings.faiss_index_path):
         vector_store = FAISS.load_local(
-            settings.faiss_index_path, 
-            embeddings, 
+            settings.faiss_index_path,
+            embeddings,
             allow_dangerous_deserialization=True
         )
     else:
-        # Fallback if no index is present yet
         vector_store = FAISS.from_texts(["No data ingested yet."], embeddings)
-        
-    retriever = vector_store.as_retriever(search_kwargs={"k": 4})
+    return vector_store.as_retriever(search_kwargs={"k": 4})
 
-    # 3. Setup Tools
+# Module-level retriever (mutable via reload_retriever)
+_retriever = _build_retriever()
+
+def reload_retriever():
+    """Hot-reloads the retriever after new documents are uploaded."""
+    global _retriever
+    _retriever = _build_retriever()
+
+def get_rag_agent():
+    # 1. Setup LLM
+    llm = ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key, streaming=True)
+
+    # 2. Document search tool (always uses the latest _retriever via closure)
     @tool
     def search_documents(query: str) -> str:
-        """Searches the uploaded documents for information. Use this FIRST when the user asks a question about the document context."""
-        docs = retriever.invoke(query)
+        """Searches the uploaded documents for information. Use this to answer questions from the personal knowledge base."""
+        docs = _retriever.invoke(query)
         return "\n\n".join([d.page_content for d in docs])
 
-    document_tool = search_documents
-    
-    tools = [document_tool]
+    tools = [search_documents]
 
-    # 4. Setup System Prompt for LangGraph Agent
+    # 3. System Prompt — strictly restrict to personal knowledge base
     system_prompt = """You are a STRICT retrieval-augmented generation assistant.
 You have access to a document search tool that queries the user's personal knowledge base.
 
@@ -57,9 +61,7 @@ CRITICAL RULES:
 When answering, use proper Markdown formatting.
 """
 
-    # 5. Create LangGraph React Agent
     agent = create_react_agent(llm, tools=tools, prompt=system_prompt)
-
     return agent
 
 # Singleton instance of the LangGraph agent
