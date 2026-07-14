@@ -2,10 +2,12 @@
 
 :root {
   --bg-main: #212121;
+  --bg-sidebar: #171717;
   --bg-secondary: #2f2f2f;
+  --bg-hover: #2a2a2a;
   --text-primary: #ECECEC;
   --text-secondary: #B4B4B4;
-  --accent: #10a37f; /* ChatGPT like accent */
+  --accent: #10a37f;
   --accent-hover: #1a7f64;
   --border-color: rgba(255, 255, 255, 0.1);
 }
@@ -27,10 +29,134 @@ body {
 
 .app-container {
   display: flex;
-  flex-direction: column;
   height: 100vh;
   max-width: 100vw;
   overflow: hidden;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  width: 260px;
+  background-color: var(--bg-sidebar);
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  border-right: 1px solid var(--border-color);
+}
+
+.new-chat-btn {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  transition: background-color 0.2s;
+}
+
+.new-chat-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.session-item {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: none;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.session-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+}
+
+.session-edit-input {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+
+.session-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.session-item.active {
+  background-color: var(--bg-secondary);
+}
+
+/* Chat Action Buttons */
+.session-actions {
+  display: none;
+  gap: 0.25rem;
+  background-color: var(--bg-hover);
+  padding-left: 0.5rem;
+}
+
+.session-item.active .session-actions {
+  background-color: var(--bg-secondary);
+}
+
+.session-item:hover .session-actions {
+  display: flex;
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.action-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.delete-btn:hover {
+  color: #ff5555;
+  background-color: rgba(255, 85, 85, 0.1);
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
 }
 
 .app-header {
@@ -56,7 +182,7 @@ body {
 }
 
 .messages-wrapper {
-  max-width: 48rem; /* 768px */
+  max-width: 48rem;
   margin: 0 auto;
   padding: 2rem 1rem;
   display: flex;
@@ -86,14 +212,12 @@ body {
   padding: 0.75rem 1.25rem;
 }
 
-/* User Message Styling */
 .message-row.user .message-content {
   background-color: var(--bg-secondary);
   border-radius: 1.5rem;
   border-bottom-right-radius: 0.25rem;
 }
 
-/* Bot Message Styling */
 .message-row.bot .message-content {
   background-color: transparent;
   padding-left: 0;
@@ -120,7 +244,6 @@ body {
   height: 18px;
 }
 
-/* Input Area */
 .input-container {
   padding: 1.5rem;
   background: linear-gradient(180deg, rgba(33,33,33,0) 0%, var(--bg-main) 40%);
@@ -195,7 +318,6 @@ body {
   margin-right: auto;
 }
 
-/* Typing Indicator */
 .typing-indicator {
   display: flex;
   align-items: center;
@@ -219,7 +341,6 @@ body {
   40% { transform: scale(1); }
 }
 
-/* Scrollbar styling for webkit */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -232,4 +353,48 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Markdown Styling */
+.message-content h1, 
+.message-content h2, 
+.message-content h3 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.message-content p {
+  margin-bottom: 0.75rem;
+}
+
+.message-content ul, 
+.message-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.message-content li {
+  margin-bottom: 0.25rem;
+}
+
+.message-content code {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.message-content pre {
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.message-content pre code {
+  background-color: transparent;
+  padding: 0;
 }
