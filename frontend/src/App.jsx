@@ -55,6 +55,27 @@ function App() {
     } catch { /* silently ignore – server may be starting */ }
   }, []);
 
+  const deleteDocument = async (filename) => {
+    if (!window.confirm(`Remove "${filename}" from the knowledge base?`)) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/documents/${encodeURIComponent(filename)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUploadStatus('success');
+        setUploadMessage(`✓ ${data.message}`);
+        fetchDocuments();
+      } else {
+        setUploadStatus('error');
+        setUploadMessage(data.detail || 'Delete failed.');
+      }
+    } catch {
+      setUploadStatus('error');
+      setUploadMessage('Could not reach the server.');
+    }
+  };
+
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
@@ -292,6 +313,11 @@ function App() {
                   <div key={i} className="doc-item">
                     <span className="doc-icon">📄</span>
                     <span className="doc-name" title={d}>{d}</span>
+                    <button
+                      className="doc-delete-btn"
+                      onClick={() => deleteDocument(d)}
+                      title="Remove from knowledge base"
+                    >✕</button>
                   </div>
                 ))}
               </div>

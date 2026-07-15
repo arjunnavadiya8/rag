@@ -24,14 +24,17 @@ async def chat(
     message: str = Form(..., description="Type your question here"),
     session_id: str = Form("default_session", description="Change this to start a new conversation")
 ):
-    # Load history for this session
-    history = get_mongodb_history(session_id)
-    
-    # Save the new user message to the database immediately
-    history.add_user_message(message)
-    
-    # Construct the input messages for LangGraph (History + New Message)
-    messages = history.messages
+    # Load history — gracefully skip if MongoDB is offline
+    history = None
+    messages = []
+    try:
+        history = get_mongodb_history(session_id)
+        history.add_user_message(message)
+        messages = history.messages
+    except Exception:
+        # MongoDB unavailable — proceed without persistent history
+        from langchain_core.messages import HumanMessage
+        messages = [HumanMessage(content=message)]
 
     async def generate():
         try:
@@ -64,8 +67,11 @@ async def chat(
                     yield f"\n*[System: Using {tool_name}...]*\n\n".encode("utf-8")
                     
             # After the stream finishes, save the final complete AI message to MongoDB
-            if final_response:
-                history.add_ai_message(final_response)
+            if final_response and history:
+                try:
+                    history.add_ai_message(final_response)
+                except Exception:
+                    pass  # MongoDB offline — skip saving
                 
         except Exception as e:
             yield f"\nError: {str(e)}".encode("utf-8")
@@ -166,6 +172,57 @@ async def list_documents():
         sources.add(src)
 
     return JSONResponse({"documents": sorted(list(sources))})
+
+
+@app.delete("/documents/{filename:path}")
+async def delete_document(filename: str):
+    """
+    Removes all chunks belonging to the given filename from the FAISS index
+    and rebuilds the index without them.
+    """
+    from langchain_openai import OpenAIEmbeddings
+    from langchain_community.vectorstores import FAISS
+    from langchain_core.documents import Document
+    from app.config import settings
+
+    if not (os.path.exists(settings.faiss_index_path) and os.path.isdir(settings.faiss_index_path)):
+        raise HTTPException(status_code=404, detail="No knowledge base found.")
+
+    embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key)
+    vector_store = FAISS.load_local(
+        settings.faiss_index_path, embeddings, allow_dangerous_deserialization=True
+    )
+
+    # Collect all chunks NOT belonging to the file we want to delete
+    remaining_docs: list[Document] = []
+    removed = 0
+    for doc_id, doc in vector_store.docstore._dict.items():
+        src = doc.metadata.get("source", "")
+        if src == filename:
+            removed += 1
+        else:
+            remaining_docs.append(doc)
+
+    if removed == 0:
+        raise HTTPException(status_code=404, detail=f"Document '{filename}' not found in the knowledge base.")
+
+    # Rebuild the index from the remaining documents (or wipe it if none left)
+    if remaining_docs:
+        new_store = FAISS.from_documents(remaining_docs, embeddings)
+        new_store.save_local(settings.faiss_index_path)
+    else:
+        # No documents left — delete the index folder entirely
+        import shutil as _shutil
+        _shutil.rmtree(settings.faiss_index_path)
+
+    # Hot-reload so the agent immediately reflects the change
+    reload_retriever()
+
+    return JSONResponse({
+        "message": f"Removed '{filename}' from the knowledge base.",
+        "chunks_removed": removed,
+        "documents_remaining": len(set(d.metadata.get("source", "") for d in remaining_docs))
+    })
 
 
 @app.get("/health")
