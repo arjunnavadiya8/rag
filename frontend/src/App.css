@@ -194,6 +194,12 @@ body {
   display: flex;
   gap: 1rem;
   width: 100%;
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .message-row.user {
@@ -237,6 +243,13 @@ body {
 .bot-avatar {
   background-color: var(--accent);
   color: white;
+  box-shadow: 0 2px 8px rgba(16, 163, 127, 0.3);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.message-row:hover .bot-avatar {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(16, 163, 127, 0.5);
 }
 
 .bot-avatar svg {
@@ -261,11 +274,14 @@ body {
   border-radius: 1.5rem;
   border: 1px solid var(--border-color);
   padding: 0.25rem;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .input-form:focus-within {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .input-form input {
@@ -378,6 +394,24 @@ body {
   margin-bottom: 0.25rem;
 }
 
+.message-content em {
+  display: inline-block;
+  background: rgba(16, 163, 127, 0.15);
+  color: #15d6a6;
+  padding: 0.15rem 0.6rem;
+  border-radius: 1rem;
+  font-style: normal;
+  font-size: 0.85rem;
+  border: 1px solid rgba(16, 163, 127, 0.3);
+  animation: pulseBadge 2s infinite alternate;
+  margin: 0.25rem 0;
+}
+
+@keyframes pulseBadge {
+  from { box-shadow: 0 0 0 rgba(16, 163, 127, 0); }
+  to { box-shadow: 0 0 8px rgba(16, 163, 127, 0.4); }
+}
+
 .message-content code {
   background-color: rgba(0, 0, 0, 0.3);
   padding: 0.2rem 0.4rem;
@@ -423,19 +457,111 @@ body {
 
 /* ─── Upload Panel ─────────────────────────────────── */
 .upload-panel {
-  border-bottom: 1px solid var(--border-color);
-  padding: 1.25rem 1.5rem;
-  background-color: var(--bg-main);
-  animation: slideDown 0.2s ease;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(33, 33, 33, 0.95);
+  backdrop-filter: blur(5px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  animation: fadeIn 0.2s ease;
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.close-upload-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-upload-btn:hover {
+  color: var(--text-primary);
+}
+
+/* ─── URL Scraper Form ─────────────────────────────── */
+.url-scrape-form {
+  width: 100%;
+  max-width: 48rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  margin-top: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.url-scrape-form:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.15);
+}
+
+.url-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.url-scrape-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.url-scrape-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.url-scrape-btn {
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.35rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  min-height: 28px;
+}
+
+.url-scrape-btn:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+.url-scrape-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ─── Drop Zone ────────────────────────────────────── */
 .drop-zone {
+  width: 100%;
   border: 2px dashed var(--border-color);
   border-radius: 0.75rem;
   padding: 2rem;
@@ -473,6 +599,7 @@ body {
 
 /* ─── Upload Status ────────────────────────────────── */
 .upload-status {
+  width: 100%;
   max-width: 48rem;
   margin: 0.75rem auto 0;
   padding: 0.65rem 1rem;
@@ -518,6 +645,7 @@ body {
 
 /* ─── Document List ────────────────────────────────── */
 .doc-list {
+  width: 100%;
   max-width: 48rem;
   margin: 1rem auto 0;
   background-color: var(--bg-secondary);

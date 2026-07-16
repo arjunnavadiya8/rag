@@ -79,6 +79,140 @@ async def chat(
     return StreamingResponse(generate(), media_type="text/plain")
 
 
+class ScrapeRequest(BaseModel):
+    url: str
+    max_pages: int = 50   # safety cap — crawl at most this many pages
+    max_depth: int = 3    # how many link-levels deep to follow
+
+@app.post("/scrape")
+async def scrape_url(body: ScrapeRequest):
+    """
+    Crawls a website starting from the given URL.
+    Follows all internal links (same domain) up to max_depth levels deep
+    and up to max_pages total pages, then indexes all text into FAISS.
+    """
+    from urllib.parse import urlparse, urljoin, urldefrag
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_openai import OpenAIEmbeddings
+    from langchain_community.vectorstores import FAISS
+    from langchain_core.documents import Document
+    from app.config import settings
+    import requests
+    from bs4 import BeautifulSoup
+
+    start_url = body.url.strip()
+    if not start_url.startswith("http://") and not start_url.startswith("https://"):
+        raise HTTPException(status_code=400, detail="Invalid URL. Must start with http:// or https://")
+
+    parsed_start = urlparse(start_url)
+    base_domain = parsed_start.netloc  # e.g. "docs.python.org"
+
+    # BFS queue: (url, depth)
+    queue: list[tuple[str, int]] = [(start_url, 0)]
+    visited: set[str] = set()
+    all_documents: list[Document] = []
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0 Safari/537.36"
+        )
+    }
+
+    def normalise(url: str) -> str:
+        """Strip fragment and trailing slash for deduplication."""
+        url, _ = urldefrag(url)
+        return url.rstrip("/")
+
+    def is_internal(url: str) -> bool:
+        parsed = urlparse(url)
+        return parsed.netloc == base_domain or parsed.netloc == ""
+
+    def extract_links(soup: BeautifulSoup, page_url: str) -> list[str]:
+        links = []
+        for tag in soup.find_all("a", href=True):
+            href = tag["href"]
+            absolute = urljoin(page_url, href)
+            clean = normalise(absolute)
+            parsed = urlparse(clean)
+            # Only http/https, same domain, no media files
+            if parsed.scheme in ("http", "https") and is_internal(clean):
+                ext = parsed.path.split(".")[-1].lower() if "." in parsed.path.split("/")[-1] else ""
+                if ext not in ("png", "jpg", "jpeg", "gif", "svg", "pdf", "zip", "css", "js"):
+                    links.append(clean)
+        return links
+
+    errors: list[str] = []
+
+    while queue and len(visited) < body.max_pages:
+        current_url, depth = queue.pop(0)
+        canonical = normalise(current_url)
+
+        if canonical in visited:
+            continue
+        visited.add(canonical)
+
+        try:
+            resp = requests.get(current_url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            content_type = resp.headers.get("Content-Type", "")
+            if "text/html" not in content_type:
+                continue
+
+            soup = BeautifulSoup(resp.text, "lxml")
+
+            # Remove script / style / nav noise
+            for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
+                tag.decompose()
+
+            text = soup.get_text(separator="\n", strip=True)
+            if text.strip():
+                all_documents.append(Document(
+                    page_content=text,
+                    metadata={"source": canonical}
+                ))
+
+            # Follow links if we haven't hit max depth
+            if depth < body.max_depth:
+                for link in extract_links(soup, current_url):
+                    if normalise(link) not in visited:
+                        queue.append((link, depth + 1))
+
+        except Exception as exc:
+            errors.append(f"{current_url}: {exc}")
+            continue
+
+    if not all_documents:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No readable text found. Errors: {'; '.join(errors[:3])}"
+        )
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = splitter.split_documents(all_documents)
+
+    embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key)
+
+    if os.path.exists(settings.faiss_index_path) and os.path.isdir(settings.faiss_index_path):
+        vector_store = FAISS.load_local(
+            settings.faiss_index_path, embeddings, allow_dangerous_deserialization=True
+        )
+        vector_store.add_documents(chunks)
+    else:
+        vector_store = FAISS.from_documents(chunks, embeddings)
+
+    vector_store.save_local(settings.faiss_index_path)
+    reload_retriever()
+
+    return JSONResponse({
+        "message": f"Crawled {len(visited)} page(s) from '{base_domain}' and indexed into knowledge base",
+        "chunks_added": len(chunks),
+        "pages_crawled": len(visited),
+        "source": start_url
+    })
+
+
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
     """

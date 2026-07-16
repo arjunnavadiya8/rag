@@ -22,6 +22,8 @@ function App() {
   const [uploadStatus, setUploadStatus] = useState(null); // null | 'uploading' | 'success' | 'error'
   const [uploadMessage, setUploadMessage] = useState('');
   const [documents, setDocuments] = useState([]);
+  const [urlInput, setUrlInput] = useState('');
+  const [isScraping, setIsScraping] = useState(false);
   const fileInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
@@ -227,6 +229,38 @@ function App() {
   const onDragLeave = () => setIsDragging(false);
   const onFileChange = (e) => uploadFile(e.target.files[0]);
 
+  const scrapeUrl = async (e) => {
+    e.preventDefault();
+    const url = urlInput.trim();
+    if (!url) return;
+    setIsScraping(true);
+    setUploadStatus('uploading');
+    setUploadMessage(`Scraping "${url}"...`);
+    try {
+      const res = await fetch('http://127.0.0.1:8000/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUploadStatus('success');
+        const pageInfo = data.pages_crawled ? ` across ${data.pages_crawled} page(s)` : '';
+        setUploadMessage(`✓ ${data.message} (${data.chunks_added} chunks added${pageInfo})`);
+        setUrlInput('');
+        fetchDocuments();
+      } else {
+        setUploadStatus('error');
+        setUploadMessage(data.detail || 'Scraping failed.');
+      }
+    } catch {
+      setUploadStatus('error');
+      setUploadMessage('Could not reach the server. Is uvicorn running?');
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
   /* ─── Render ────────────────────────────────────── */
   return (
     <div className="app-container">
@@ -280,6 +314,7 @@ function App() {
         {/* ── Upload Panel ── */}
         {showUpload && (
           <div className="upload-panel">
+            <button className="close-upload-btn" onClick={() => setShowUpload(false)} title="Close">✕</button>
             <div
               className={`drop-zone ${isDragging ? 'dragging' : ''}`}
               onDrop={onDrop}
@@ -301,10 +336,30 @@ function App() {
 
             {uploadStatus && (
               <div className={`upload-status ${uploadStatus}`}>
-                {uploadStatus === 'uploading' && <span className="spinner" />}
+                {(uploadStatus === 'uploading') && <span className="spinner" />}
                 {uploadMessage}
               </div>
             )}
+
+            {/* URL Scraper */}
+            <form className="url-scrape-form" onSubmit={scrapeUrl}>
+              <span className="url-icon">🌐</span>
+              <input
+                type="url"
+                className="url-scrape-input"
+                placeholder="Paste a URL to scrape (e.g. https://example.com)"
+                value={urlInput}
+                onChange={e => setUrlInput(e.target.value)}
+                disabled={isScraping}
+              />
+              <button
+                type="submit"
+                className="url-scrape-btn"
+                disabled={!urlInput.trim() || isScraping}
+              >
+                {isScraping ? <span className="spinner" /> : 'Add'}
+              </button>
+            </form>
 
             {documents.length > 0 && (
               <div className="doc-list">

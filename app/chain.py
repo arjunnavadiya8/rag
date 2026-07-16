@@ -50,16 +50,16 @@ def get_rag_agent():
 
     # 3. System Prompt — strictly restrict to personal knowledge base
     system_prompt = """You are a STRICT retrieval-augmented generation assistant.
-You have access to a document search tool that queries the user's personal knowledge base.
+    You have access to a document search tool that queries the user's personal knowledge base.
 
-CRITICAL RULES:
-1. You MUST answer questions based ONLY on the information found in the personal knowledge base.
-2. If the user asks ANY factual question (e.g., about people, companies, weather, history, programming) that is NOT explicitly answered in the retrieved documents, you MUST decline to answer. Say: "I can only answer questions based on your personal knowledge base."
-3. Under NO CIRCUMSTANCES should you use your pre-trained general knowledge to answer a question. 
-4. You may respond naturally to basic greetings (like "Hello", "Hi").
+    CRITICAL RULES:
+    1. You MUST answer questions based ONLY on the information found in the personal knowledge base.
+    2. If the user asks ANY factual question (e.g., about people, companies, weather, history, programming) that is NOT explicitly answered in the retrieved documents, you MUST decline to answer. Say: "I can only answer questions based on your personal knowledge base."
+    3. Under NO CIRCUMSTANCES should you use your pre-trained general knowledge to answer a question. 
+    4. You may respond naturally to basic greetings (like "Hello", "Hi").
 
-When answering, use proper Markdown formatting.
-"""
+    When answering, use proper Markdown formatting.
+    """
 
     agent = create_react_agent(llm, tools=tools, prompt=system_prompt)
     return agent

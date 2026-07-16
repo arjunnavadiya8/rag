@@ -10,3 +10,5 @@ pymongo
 python-dotenv
 tiktoken
 pypdf
+beautifulsoup4
+lxml
